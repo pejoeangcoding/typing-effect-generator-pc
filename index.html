@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eye-Catching Code Editor with Line Numbers</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Fira Code', monospace;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        #preview {
+            flex: 1 1 50%;
+            border-right: 2px solid #4e4e6e;
+            background-color: #fff;
+            overflow-y: auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border-radius: 8px 0 0 8px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        #preview iframe {
+            width: 100%;
+            flex: 1;
+            border: none;
+            background: #fff;
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+        }
+        #editor-wrapper {
+            flex: 1 1 50%;
+            display: flex;
+            flex-direction: column;
+            background: #0f0f23;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: flex 0.3s ease;
+            min-height: 0;
+        }
+        
+        /* Tab Navigation */
+        #tab-nav {
+            display: flex;
+            background: #0d0d1f;
+            border-bottom: 2px solid #4e4e6e;
+            padding: 0;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 12px 20px;
+            background: #1e1e2f;
+            color: #888;
+            border: none;
+            border-right: 1px solid #4e4e6e;
+            cursor: pointer;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+        .tab-button:last-child {
+            border-right: none;
+        }
+        .tab-button:hover {
+            background: #2a2a3f;
+            color: #e0e0e0;
+        }
+        .tab-button.active {
+            background: #00d1b2;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 209, 178, 0.3);
+        }
+        
+        #editor {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+        #line-numbers {
+            background: #1e1e2f;
+            padding: 10px 10px 10px 5px;
+            text-align: right;
+            font-size: 14px;
+            color: #888;
+            user-select: none;
+            overflow-y: hidden;
+            white-space: pre;
+            border-right: 1px solid #4e4e6e;
+            height: 100%;
+            line-height: 1.3;
+        }
+        #editor textarea {
+            flex: 1;
+            width: 100%;
+            resize: none;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            padding: 10px;
+            border: none;
+            background: #1e1e2f;
+            color: #e0e0e0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            tab-size: 2;
+            line-height: 1.3;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+        }
+        #editor textarea:focus {
+            outline: none;
+            box-shadow: 0 0 8px rgba(0, 209, 178, 0.5);
+        }
+        #controls {
+            padding: 10px 15px;
+            text-align: center;
+            background: #0f0f23;
+            border-top: 2px solid #4e4e6e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+            flex-shrink: 0;
+            min-height: 60px;
+        }
+        #run-btn, #toggle-editor-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #00d1b2, #00b894);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+        }
+        #run-btn:hover, #toggle-editor-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 209, 178, 0.5);
+        }
+        #run-btn:disabled, #toggle-editor-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: none;
+            box-shadow: none;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #1e1e2f;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .speed-control button {
+            padding: 8px 12px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #4e4e6e;
+            color: #e0e0e0;
+            border: none;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+        .speed-control button:hover {
+            background: #00d1b2;
+            color: #fff;
+        }
+        .speed-control input[type="range"] {
+            width: 120px;
+            accent-color: #00d1b2;
+        }
+        .speed-control label {
+            font-size: 14px;
+            color: #e0e0e0;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            #preview, #editor-wrapper {
+                flex: 1 1 100%;
+                border-radius: 8px;
+                margin: 5px 0;
+                border: none;
+            }
+            #preview {
+                border-bottom: 2px solid #4e4e6e;
+                border-right: none;
+            }
+            #controls {
+                padding: 8px 10px;
+                gap: 8px;
+                min-height: 50px;
+                flex-wrap: wrap;
+            }
+            #run-btn, #toggle-editor-btn {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            .speed-control {
+                font-size: 11px;
+                padding: 6px;
+            }
+            .speed-control input[type="range"] {
+                width: 80px;
+            }
+            body {
+                height: 100dvh; /* Dynamic viewport height untuk mobile */
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div id="preview">
+            <iframe id="preview-frame"></iframe>
+        </div>
+        <div id="editor-wrapper">
+            <div id="tab-nav">
+                <button class="tab-button active" data-tab="html">HTML</button>
+                <button class="tab-button" data-tab="css">CSS</button>
+                <button class="tab-button" data-tab="js">JavaScript</button>
+            </div>
+            <div id="editor">
+                <div id="line-numbers"></div>
+                <textarea id="code-editor" spellcheck="false"></textarea>
+            </div>
+        </div>
+    </div>
+    <div id="controls">
+        <button id="run-btn">▶️</button>
+        <button id="toggle-editor-btn">⏬</button>
+        <div class="speed-control">
+            <button id="speed-minus">-</button>
+            <input type="range" id="speed-slider" min="20" max="200" value="75">
+            <button id="speed-plus">+</button>
+            <label>Typing Speed: <span id="speed-value">75</span> ms</label>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const codeEditor = document.getElementById('code-editor');
+        const previewFrame = document.getElementById('preview-frame');
+        const runBtn = document.getElementById('run-btn');
+        const toggleEditorBtn = document.getElementById('toggle-editor-btn');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedMinus = document.getElementById('speed-minus');
+        const speedPlus = document.getElementById('speed-plus');
+        const speedValue = document.getElementById('speed-value');
+        const lineNumbers = document.getElementById('line-numbers');
+        const editorWrapper = document.getElementById('editor-wrapper');
+        const tabButtons = document.querySelectorAll('.tab-button');
+
+        // Store code for each tab
+        let tabContents = {
+            html: '',
+            css: '',
+            js: ''
+        };
+
+        // Store pasted code for each tab
+        let pastedCodes = {
+            html: '',
+            css: '',
+            js: ''
+        };
+
+        // Track which tabs need typing
+        let needsTyping = {
+            html: false,
+            css: false,
+            js: false
+        };
+
+        // Current active tab
+        let currentTab = 'html';
+        let isEditorVisible = true;
+
+        // Initialize typing speed (base delay in ms)
+        let baseTypingDelay = parseInt(speedSlider.value);
+
+        // Update speed value display
+        function updateSpeedDisplay() {
+            speedValue.textContent = baseTypingDelay;
+        }
+
+        // Update line numbers
+        function updateLineNumbers() {
+            const lines = (codeEditor.value + '\n').split('\n').length;
+            let numbers = '';
+            for (let i = 1; i < lines; i++) {
+                numbers += i + '\n';
+            }
+            lineNumbers.textContent = numbers;
+            syncScroll();
+        }
+
+        // Sync scroll between line numbers and textarea
+        function syncScroll() {
+            lineNumbers.scrollTop = codeEditor.scrollTop;
+        }
+
+        // Update preview function combining all tabs
+        function updatePreview() {
+            // Update current tab content first
+            tabContents[currentTab] = codeEditor.value;
+            
+            const htmlCode = tabContents.html || '';
+            const cssCode = tabContents.css || '';
+            const jsCode = tabContents.js || '';
+            
+            const previewContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            line-height: 1.2;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        ${cssCode}
+    </style>
+</head>
+<body>
+    ${htmlCode}
+    ${jsCode.trim() ? `<script>
+        try {
+            ${jsCode}
+        } catch (e) {
+            console.error('JavaScript Error:', e);
+        }
+    <\/script>` : ''}
+</body>
+</html>`;
+            
+            const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            doc.open();
+            doc.write(previewContent);
+            doc.close();
+
+            // Auto-scroll preview to bottom
+            scrollPreviewToBottom();
+        }
+
+        // Function to scroll preview to bottom
+        function scrollPreviewToBottom() {
+            try {
+                const iframeWindow = previewFrame.contentWindow;
+                if (iframeWindow && iframeWindow.document) {
+                    iframeWindow.scrollTo(0, iframeWindow.document.body.scrollHeight);
+                }
+            } catch (e) {
+                // Ignore cross-origin errors
+            }
+        }
+
+        // Tab switching functionality
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Save current tab content
+                tabContents[currentTab] = codeEditor.value;
+                
+                // Update active tab
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                currentTab = button.dataset.tab;
+                
+                // Load new tab content
+                codeEditor.value = tabContents[currentTab];
+                updateLineNumbers();
+                updatePreview();
+            });
+        });
+
+        // Bind scroll event on textarea to sync line numbers
+        codeEditor.addEventListener('scroll', syncScroll);
+
+        // Slider input handler
+        speedSlider.addEventListener('input', () => {
+            baseTypingDelay = parseInt(speedSlider.value);
+            updateSpeedDisplay();
+        });
+
+        // Speed minus button
+        speedMinus.addEventListener('click', () => {
+            baseTypingDelay = Math.min(baseTypingDelay + 10, 200);
+            speedSlider.value = baseTypingDelay;
+            updateSpeedDisplay();
+        });
+
+        // Speed plus button
+        speedPlus.addEventListener('click', () => {
+            baseTypingDelay = Math.max(baseTypingDelay - 10, 20);
+            speedSlider.value = baseTypingDelay;
+            updateSpeedDisplay();
+        });
+
+        // Intercept paste events
+        codeEditor.addEventListener('paste', (e) => {
+            e.preventDefault();
+            pastedCodes[currentTab] = (e.clipboardData || window.clipboardData).getData('text')
+                .replace(/\n{2,}/g, '\n')
+                .replace(/\r\n/g, '\n')
+                .trim();
+            needsTyping[currentTab] = true;
+            codeEditor.value = '';
+            updateLineNumbers();
+        });
+
+        // Auto-indent after Enter
+        codeEditor.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const cursorPos = codeEditor.selectionStart;
+                const textBeforeCursor = codeEditor.value.substring(0, cursorPos);
+                const lastLine = textBeforeCursor.split('\n').pop();
+                const indentMatch = lastLine.match(/^\s*/);
+                let indent = indentMatch ? indentMatch[0] : '';
+
+                if (lastLine.trim().endsWith('>') && lastLine.trim().startsWith('<') && !lastLine.trim().startsWith('</')) {
+                    indent += '  ';
+                }
+
+                codeEditor.value = textBeforeCursor + '\n' + indent + codeEditor.value.substring(cursorPos);
+                codeEditor.selectionStart = codeEditor.selectionEnd = cursorPos + indent.length + 1;
+                updatePreview();
+                scrollToBottom();
+                updateLineNumbers();
+            }
+        });
+
+        // Auto-suggest closing tag after typing '>' (only for HTML tab)
+        codeEditor.addEventListener('input', (e) => {
+            if (currentTab === 'html') {
+                const cursorPos = codeEditor.selectionStart;
+                const textBeforeCursor = codeEditor.value.substring(0, cursorPos);
+                const textAfterCursor = codeEditor.value.substring(cursorPos);
+
+                if (codeEditor.value[cursorPos - 1] === '>') {
+                    const openTagMatch = textBeforeCursor.match(/<([a-zA-Z0-9-]+)([^>]*)$/);
+                    if (openTagMatch) {
+                        const tagName = openTagMatch[1];
+                        if (!/^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/.test(tagName) &&
+                            !textAfterCursor.startsWith(`</${tagName}>`)) {
+                            const lastLineMatch = textBeforeCursor.split('\n').pop().match(/^\s*/);
+                            const indentMatch = lastLineMatch ? lastLineMatch[0] : '';
+                            codeEditor.value = textBeforeCursor + `\n${indentMatch}</${tagName}>` + textAfterCursor;
+                            codeEditor.selectionStart = codeEditor.selectionEnd = cursorPos;
+                        }
+                    }
+                }
+            }
+
+            updatePreview();
+            scrollToBottom();
+            updateLineNumbers();
+        });
+
+        // Function to scroll textarea and line numbers to bottom
+        function scrollToBottom() {
+            codeEditor.scrollTop = codeEditor.scrollHeight;
+            syncScroll();
+        }
+
+        // Human-like typing effect with line tracking and auto-scroll
+        async function typeCode(code) {
+            codeEditor.value = '';
+            const normalizedCode = code.replace(/\n{2,}/g, '\n').split('\n');
+            let currentLine = 1;
+
+            for (const line of normalizedCode) {
+                for (let j = 0; j < line.length; j++) {
+                    codeEditor.value += line[j];
+                    updatePreview();
+                    updateLineNumbers();
+                    scrollToBottom();
+
+                    const variation = Math.floor(Math.random() * baseTypingDelay * 0.5);
+                    const delay = Math.max(baseTypingDelay - variation, 10);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+
+                    if (j < line.length - 1 && (line[j] === '>' || line[j] === ';')) {
+                        const pause = Math.floor(Math.random() * 500) + 200;
+                        await new Promise(resolve => setTimeout(resolve, pause));
+                    }
+
+                    if (Math.random() < 0.01 && j > 0) {
+                        codeEditor.value = codeEditor.value.slice(0, -1);
+                        j--;
+                        updatePreview();
+                        updateLineNumbers();
+                        scrollToBottom();
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
+                }
+                if (currentLine < normalizedCode.length) {
+                    codeEditor.value += '\n';
+                    currentLine++;
+                    updatePreview();
+                    updateLineNumbers();
+                    scrollToBottom();
+                    const pause = Math.floor(Math.random() * 500) + 200;
+                    await new Promise(resolve => setTimeout(resolve, pause));
+                }
+            }
+        }
+
+        // Toggle editor visibility
+        toggleEditorBtn.addEventListener('click', () => {
+            isEditorVisible = !isEditorVisible;
+            if (isEditorVisible) {
+                editorWrapper.style.display = 'flex';
+                toggleEditorBtn.textContent = '⏬';
+            } else {
+                editorWrapper.style.display = 'none';
+                toggleEditorBtn.textContent = '⏫';
+            }
+        });
+
+        // Run button to start typing all pasted codes sequentially
+        runBtn.addEventListener('click', async () => {
+            // Check if any tab has pasted code to type
+            const hasAnyTyping = needsTyping.html || needsTyping.css || needsTyping.js;
+            if (!hasAnyTyping) return;
+            
+            runBtn.disabled = true;
+            
+            // Sequential typing: HTML → CSS → JavaScript
+            const tabOrder = ['html', 'css', 'js'];
+            
+            for (const tab of tabOrder) {
+                if (needsTyping[tab]) {
+                    // Switch to tab
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+                    currentTab = tab;
+                    
+                    // Clear editor and load tab content
+                    codeEditor.value = '';
+                    updatePreview();
+                    updateLineNumbers();
+                    
+                    // Type the code for this tab
+                    await typeCode(pastedCodes[tab]);
+                    
+                    // Save the typed content and mark as done
+                    tabContents[currentTab] = codeEditor.value;
+                    needsTyping[currentTab] = false;
+                    
+                    // Small pause between tabs
+                    if (tab !== 'js') {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+            }
+            
+            runBtn.disabled = false;
+        });
+
+        // Update line numbers on input and save current tab content
+        codeEditor.addEventListener('input', () => {
+            tabContents[currentTab] = codeEditor.value;
+            updateLineNumbers();
+            syncScroll();
+        });
+
+        // Initial setup
+        updateSpeedDisplay();
+        updatePreview();
+        updateLineNumbers();
+    </script>
+</body>
+</html>
